@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  embedding-service:
+    build:
+      context: .
+      dockerfile: dockerfile-embedding
+    ports:
+      - "9200:9200"
+    volumes:
+      - ./embedding-service.py:/app/embedding-service.py
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    command: ["python", "embedding-service.py"]
+
+  splade-doc-service:
+    build:
+      context: .
+      dockerfile: dockerfile-splade
+    ports:
+      - "9201:9201"
+    volumes:
+      - ./splade-doc-service.py:/app/splade-doc-service.py
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    command: ["python", "splade-doc-service.py"]
+
+  splade-query-service:
+    build:
+      context: .
+      dockerfile: dockerfile-splade
+    ports:
+      - "9202:9202"
+    volumes:
+      - ./splade-query-service.py:/app/splade-query-service.py
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    command: ["python", "splade-query-service.py"]
+
+  reranking-service:
+    build:
+      context: .
+      dockerfile: dockerfile-reranking
+    ports:
+      - "9203:9203"
+    volumes:
+      - ./reranking-service.py:/app/reranking-service.py
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    command: ["python", "reranking-service.py"]

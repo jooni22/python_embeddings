@@ -1,0 +1,8 @@
+fastapi==0.111.0
+fastapi-cli==0.0.4
+pydantic==2.7.3
+pydantic_core==2.18.4
+sentence-transformers==3.0.1
+torch==2.3.1
+transformers==4.41.2
+uvicorn==0.30.1
