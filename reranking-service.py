@@ -54,4 +54,4 @@ async def get_rerank_embeddings(request: RerankRequest):
     return reranked_results
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=9203, access_log=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000, access_log=True)

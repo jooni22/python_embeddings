@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from pydantic import BaseModel, RootModel
-from typing import List
+from typing import List, Union
 import torch
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 import uvicorn
@@ -18,7 +18,7 @@ model = AutoModelForMaskedLM.from_pretrained(model_name).to(device)
 model.eval()  # Set the model to evaluation mode
 
 class EmbedRequest(BaseModel):
-    inputs: str
+    inputs: Union[str, List[str]]
 
 class SparseValue(BaseModel):
     index: int
@@ -34,9 +34,13 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     return response
 
-@app.post("/embed_sparse", response_model=EmbedSparseResponse)
+@app.post("/embed_sparse", response_model=List[EmbedSparseResponse])
 async def get_sparse_embedding(request: EmbedRequest):
     inputs = request.inputs
+
+    # Ensure inputs is a list for consistent processing
+    if isinstance(inputs, str):
+        inputs = [inputs]
 
     # Tokenize the input and move to the appropriate device
     tokens = tokenizer(inputs, return_tensors='pt', padding=True, truncation=True, max_length=512)
@@ -69,7 +73,7 @@ async def get_sparse_embedding(request: EmbedRequest):
 
     response = EmbedSparseResponse(root=sparse_values)
     print(response.model_dump_json())
-    return response
+    return [response]  # Return the response in a double square bracket.
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=9201, access_log=True)
+    uvicorn.run(app, host="0.0.0.0", port=4000, access_log=True)
