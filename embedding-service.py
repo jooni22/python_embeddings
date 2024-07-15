@@ -1,15 +1,12 @@
-# The error occurs because `asyncio.run()` cannot be called from an already running event loop, which is the case in Jupyter notebooks.
-# The fix below adapts the code to check for the running event loop and uses `await` to run the server directly if it is in a Jupyter notebook.
-
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 from typing import List, Union
-import uvicorn
 from transformers.utils import logging
 from urllib.parse import urlparse, parse_qs
 import torch
 from concurrent.futures import ThreadPoolExecutor
+import uvicorn
 import asyncio
 
 logging.set_verbosity_info()
@@ -18,8 +15,6 @@ logger = logging.get_logger("transformers")
 app = FastAPI()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-print(device)
 
 models = {
     "jinaai/jina-embeddings-v2-base-en": SentenceTransformer("jinaai/jina-embeddings-v2-base-en").to(device)
@@ -32,6 +27,7 @@ model_key_mapping = {
 }
 
 executor = ThreadPoolExecutor(max_workers=8)
+BATCH_SIZE = 32
 
 class Item(BaseModel):
     input: Union[List[str], str]
@@ -54,11 +50,9 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     return response
 
-async def process_embedding(text, model, index):
-    embedding = await asyncio.get_event_loop().run_in_executor(
-        executor, lambda: model.encode(text, device=device)
-    )
-    return Embedding(object="embedding", embedding=embedding.tolist(), index=index)
+async def process_batch(texts, model):
+    embeddings = model.encode(texts)
+    return [Embedding(object="embedding", embedding=emb.tolist(), index=i) for i, emb in enumerate(embeddings)]
 
 @app.post("/embeddings", response_model=EmbeddingResponse)
 async def get_embeddings(request: Request, item: Item):
@@ -78,7 +72,10 @@ async def get_embeddings(request: Request, item: Item):
 
     selected_model = models[actual_model_key]
 
-    embeddings = await asyncio.gather(*[process_embedding(text, selected_model, i) for i, text in enumerate(input_list)])
+    batches = [input_list[i:i+BATCH_SIZE] for i in range(0, len(input_list), BATCH_SIZE)]
+    embeddings = []
+    for batch in batches:
+        embeddings.extend(await process_batch(batch, selected_model))
 
     total_tokens = sum(len(text.split()) for text in input_list)
 
@@ -92,6 +89,21 @@ async def get_embeddings(request: Request, item: Item):
     logger.info(response.json())
     return response
 
-if __name__ == "__main__":
-        uvicorn.run(app, host="0.0.0.0", port=6000, access_log=False)
+# Check if we are in a Jupyter notebook by looking for a running event loop
+if "get_ipython" in globals():
+    import nest_asyncio
+    from uvicorn import Config, Server
+
+    nest_asyncio.apply()
+
+    # Since uvicorn.run() starts an event loop, we need a non-blocking way to run the server in Jupyter
+    config = Config(app=app, host="0.0.0.0", port=6000, log_level="info")
+    server = Server(config)
+
+    # Instead of uvicorn.run, use a new asyncio loop to start the server to avoid blocking
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(server.serve())
+else:
+    if __name__ == "__main__":
+        uvicorn.run(app, host="0.0.0.0", port=6000, log_level="info")
 
