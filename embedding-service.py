@@ -15,7 +15,6 @@ dimensions = 512
 # Initialize models including the new one
 models = {
     "baai/bge-m3": SentenceTransformer('baai/bge-m3'),
-#    "mixedbread-ai/mxbai-embed-large-v1": SentenceTransformer("mixedbread-ai/mxbai-embed-large-v1"),
     "jinaai/jina-embeddings-v2-base-en": SentenceTransformer("jinaai/jina-embeddings-v2-base-en")
 }
 
@@ -23,8 +22,6 @@ models = {
 model_key_mapping = {
     "bge-m3": "baai/bge-m3",
     "baai/bge-m3": "baai/bge-m3",
-    # "mixedbread-ai/mxbai-embed-large-v1": "mixedbread-ai/mxbai-embed-large-v1",
-    # "mxbai-embed-large-v1": "mixedbread-ai/mxbai-embed-large-v1",
     "jina-embeddings-v2-base-en": "jinaai/jina-embeddings-v2-base-en",
     "jinaai/jina-embeddings-v2-base-en": "jinaai/jina-embeddings-v2-base-en",
     "jina-base-en": "jinaai/jina-embeddings-v2-base-en"    
