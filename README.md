@@ -41,25 +41,29 @@ This structured overview provides insights into how various components interact 
 
 ### How to run:
 You can run via:
-`docker compose up -d`
+```
+docker compose up -d
+```
 or without docker:
-`tail -f logs.txt & python3 embedding-service.py >> logs.txt & python3 reranking-service.py >> logs.txt & python3 splade-doc-service.py >> logs.txt & python3 splade-query-service.py >> logs.txt`
+```
+tail -f logs.txt & python3 embedding-service.py >> logs.txt & python3 reranking-service.py >> logs.txt & python3 splade-doc-service.py >> logs.txt & python3 splade-query-service.py >> logs.txt
+```
 
 ### How to call API:
 
 #### EMBEDDING-SERVICE:
 Multiple model is available only in embedding-service, you can refer to the API in several different ways for embedding-service:
-`curl -s http://127.0.0.1:6000/embeddings -X POST -H "Content-Type: application/json" -d '{"input": "What is Deep Learning?", "model": "jina-embeddings-v2-base-en"}'`
+```curl -s http://127.0.0.1:6000/embeddings -X POST -H "Content-Type: application/json" -d '{"input": "What is Deep Learning?", "model": "jina-embeddings-v2-base-en"}'```
 If your application additionally adds "api-version" to the endpoint, embedding-service will also return the result correctly (this value is ignored)
-`curl -s http://127.0.0.1:6000/embeddings?api-version=2023-05-15 -X POST -H "Content-Type: application/json" -d '{"input": "What is Deep Learning?", "model": "jina-embeddings-v2-base-en"}'`
+```curl -s http://127.0.0.1:6000/embeddings?api-version=2023-05-15 -X POST -H "Content-Type: application/json" -d '{"input": "What is Deep Learning?", "model": "jina-embeddings-v2-base-en"}'```
 Also, embeddings will be returned correctly if you add the organisation name before the model name.
-`curl -s http://127.0.0.1:6000/embeddings -X POST -H "Content-Type: application/json" -d '{"input": "What is Deep Learning?", "model": "jinaai/jina-embeddings-v2-base-en"}'`
+```curl -s http://127.0.0.1:6000/embeddings -X POST -H "Content-Type: application/json" -d '{"input": "What is Deep Learning?", "model": "jinaai/jina-embeddings-v2-base-en"}'```
 
 #### RERANKING-SERVICE:
-`curl -s http://127.0.0.1:8000/rerank -X POST -H 'Content-Type: application/json' -d '{"query":"What is Deep Learning?", "texts": ["Deep Learning is not...", "Deep learning is..."], "truncate": true}'`
+```curl -s http://127.0.0.1:8000/rerank -X POST -H 'Content-Type: application/json' -d '{"query":"What is Deep Learning?", "texts": ["Deep Learning is not...", "Deep learning is..."], "truncate": true}'```
 
 #### SPLADE-DOC-SERVICE:
-`curl -s http://127.0.0.1:4000/embed_sparse -X POST -H "Content-Type: application/json" -d '{"inputs": "What is Deep Learning?"}'`
+```curl -s http://127.0.0.1:4000/embed_sparse -X POST -H "Content-Type: application/json" -d '{"inputs": "What is Deep Learning?"}'```
 
 #### SPLADE-QUERY-SERVICE:
-`curl -s http://127.0.0.1:5000/embed_sparse -X POST -H "Content-Type: application/json" -d '{"inputs": "What is Deep Learning?"}'`
+```curl -s http://127.0.0.1:5000/embed_sparse -X POST -H "Content-Type: application/json" -d '{"inputs": "What is Deep Learning?"}'```
