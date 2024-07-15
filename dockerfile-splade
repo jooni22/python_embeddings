@@ -10,11 +10,12 @@ RUN apt-get update && apt-get install -y \
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Install additional dependencies for SPLADE
 RUN pip install --no-cache-dir transformers
 
-# Set environment variable to use CUDA
-ENV CUDA_VISIBLE_DEVICES=0
+# Set environment variables
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# The specific service script will be mounted as a volume
 
 CMD ["python"]

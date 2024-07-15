@@ -17,7 +17,7 @@ app = FastAPI()
 #rerank_module = SentenceTransformer('BAAI/bge-reranker-base') # 45-70 ms
 #rerank_module = SentenceTransformer('BAAI/bge-reranker-v2-m3') #  100ms
 rerank_module = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2') # 15-30ms
-
+#sdadas/polish-reranker-large-mse
 class RerankRequest(BaseModel):
     query: str
     texts: List[str]

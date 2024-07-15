@@ -11,8 +11,13 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir transformers
-# Set environment variable to use CUDA
-ENV CUDA_VISIBLE_DEVICES=0
 
+# Set environment variables
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
-CMD ["python"]
+# Copy the application code
+COPY embedding-service.py .
+
+# Run the application
+CMD ["python", "embedding-service.py"]

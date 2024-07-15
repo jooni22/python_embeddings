@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   embedding-service:
     build:
@@ -7,10 +9,19 @@ services:
       - "6000:6000"
     volumes:
       - ./embedding-service.py:/app/embedding-service.py
+      - model_cache:/root/.cache
     deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
       restart_policy:
         condition: on-failure
         max_attempts: 3
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
     command: ["python", "embedding-service.py"]
 
   splade-doc-service:
@@ -21,10 +32,19 @@ services:
       - "4000:4000"
     volumes:
       - ./splade-doc-service.py:/app/splade-doc-service.py
+      - model_cache:/root/.cache
     deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
       restart_policy:
         condition: on-failure
         max_attempts: 3
+    environment:
+      - CUDA_VISIBLE_DEVICES=1
     command: ["python", "splade-doc-service.py"]
 
   splade-query-service:
@@ -35,10 +55,19 @@ services:
       - "5001:5000"
     volumes:
       - ./splade-query-service.py:/app/splade-query-service.py
+      - model_cache:/root/.cache
     deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
       restart_policy:
         condition: on-failure
         max_attempts: 3
+    environment:
+      - CUDA_VISIBLE_DEVICES=2
     command: ["python", "splade-query-service.py"]
 
   reranking-service:
@@ -49,8 +78,24 @@ services:
       - "8000:8000"
     volumes:
       - ./reranking-service.py:/app/reranking-service.py
+      - model_cache:/root/.cache
     deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
       restart_policy:
         condition: on-failure
         max_attempts: 3
+    environment:
+      - CUDA_VISIBLE_DEVICES=3
     command: ["python", "reranking-service.py"]
+
+volumes:
+  model_cache:
+
+networks:
+  app_network:
+    driver: bridge
