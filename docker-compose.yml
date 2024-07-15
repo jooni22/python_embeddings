@@ -32,7 +32,7 @@ services:
       context: .
       dockerfile: dockerfile-splade
     ports:
-      - "5000:5000"
+      - "5001:5000"
     volumes:
       - ./splade-query-service.py:/app/splade-query-service.py
     deploy:

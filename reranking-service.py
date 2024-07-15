@@ -10,8 +10,13 @@ import uvicorn
 # logger = logging.get_logger("transformers")
 
 app = FastAPI()
-
-rerank_module = SentenceTransformer('mixedbread-ai/mxbai-rerank-xsmall-v1')
+### TIME BASED ON CPU
+#rerank_module = SentenceTransformer('mixedbread-ai/mxbai-rerank-xsmall-v1') # 50-70ms
+#rerank_module = SentenceTransformer('jinaai/jina-reranker-v1-turbo-en') # 30-40ms
+#rerank_module = SentenceTransformer('jinaai/jina-reranker-v2-base-multilingual') # 1s+
+#rerank_module = SentenceTransformer('BAAI/bge-reranker-base') # 45-70 ms
+#rerank_module = SentenceTransformer('BAAI/bge-reranker-v2-m3') #  100ms
+rerank_module = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2') # 15-30ms
 
 class RerankRequest(BaseModel):
     query: str
