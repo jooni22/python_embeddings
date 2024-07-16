@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   embedding-service:
     build:
@@ -22,7 +20,7 @@ services:
         max_attempts: 3
     environment:
       - CUDA_VISIBLE_DEVICES=0
-    command: ["python", "embedding-service.py"]
+    command: ["gunicorn", "embedding-service:app", "--bind", "0.0.0.0:6000", "--workers", "2", "--worker-class", "uvicorn.workers.UvicornWorker", "--timeout", "120"]      
 
   splade-doc-service:
     build:
@@ -44,7 +42,7 @@ services:
         condition: on-failure
         max_attempts: 3
     environment:
-      - CUDA_VISIBLE_DEVICES=1
+      - CUDA_VISIBLE_DEVICES=0
     command: ["python", "splade-doc-service.py"]
 
   splade-query-service:
@@ -67,7 +65,7 @@ services:
         condition: on-failure
         max_attempts: 3
     environment:
-      - CUDA_VISIBLE_DEVICES=2
+      - CUDA_VISIBLE_DEVICES=0
     command: ["python", "splade-query-service.py"]
 
   reranking-service:
@@ -90,8 +88,8 @@ services:
         condition: on-failure
         max_attempts: 3
     environment:
-      - CUDA_VISIBLE_DEVICES=3
-    command: ["python", "reranking-service.py"]
+      - CUDA_VISIBLE_DEVICES=0
+    command: ["gunicorn", "reranking-service:app", "--bind", "0.0.0.0:8000", "--workers", "2", "--worker-class", "uvicorn.workers.UvicornWorker", "--timeout", "120"]
 
 volumes:
   model_cache:
