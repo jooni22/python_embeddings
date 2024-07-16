@@ -1,62 +1,80 @@
-from fastapi import FastAPI, Request
-from pydantic import BaseModel
+from fastapi import FastAPI, Request, HTTPException
+from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import cos_sim
 from typing import List, Optional
 import uvicorn
-# from transformers.utils import logging
+import torch
+from transformers import logging
 
-# logging.set_verbosity_info()
-# logger = logging.get_logger("transformers")
+# Set up logging
+logging.set_verbosity_info()
+logger = logging.get_logger("transformers")
 
 app = FastAPI()
+
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 ### TIME BASED ON CPU
 #rerank_module = SentenceTransformer('mixedbread-ai/mxbai-rerank-xsmall-v1') # 50-70ms
 #rerank_module = SentenceTransformer('jinaai/jina-reranker-v1-turbo-en') # 30-40ms
 #rerank_module = SentenceTransformer('jinaai/jina-reranker-v2-base-multilingual') # 1s+
 #rerank_module = SentenceTransformer('BAAI/bge-reranker-base') # 45-70 ms
 #rerank_module = SentenceTransformer('BAAI/bge-reranker-v2-m3') #  100ms
-rerank_module = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2') # 15-30ms
+#rerank_module = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2') # 15-30ms
 #sdadas/polish-reranker-large-mse
+
+MODEL_NAME = 'BAAI/bge-reranker-base'
+
+# Initialize the model
+rerank_module = SentenceTransformer(MODEL_NAME).to(DEVICE)
+
 class RerankRequest(BaseModel):
-    query: str
-    texts: List[str]
-    truncate: bool
+    query: str = Field(..., description="The query to rerank against")
+    texts: List[str] = Field(..., description="The list of texts to be reranked")
+    truncate: bool = Field(False, description="Whether to truncate the text in the response")
 
 class RerankResponse(BaseModel):
-    index: int
-    score: float
-    text: Optional[str]
+    index: int = Field(..., description="The original index of the text")
+    score: float = Field(..., description="The similarity score")
+    text: Optional[str] = Field(None, description="The original text (if not truncated)")
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    print(f"Received request: {request.method} {request.url}")
-    print(f"Request body: {await request.body()}")
+    logger.info(f"Received request: {request.method} {request.url}")
     response = await call_next(request)
     return response
 
 @app.post("/rerank", response_model=List[RerankResponse])
 async def get_rerank_embeddings(request: RerankRequest):
-    query = request.query
-    texts = request.texts
-    truncate = request.truncate
+    try:
+        query = request.query
+        texts = request.texts
+        truncate = request.truncate
 
-    # Perform reranking logic here
-    embeddings = rerank_module.encode([query] + texts)
-    query_embedding = embeddings[0]
-    text_embeddings = embeddings[1:]
+        # Perform reranking
+        embeddings = rerank_module.encode([query] + texts)
+        query_embedding = embeddings[0]
+        text_embeddings = embeddings[1:]
 
-    similarities = cos_sim(query_embedding, text_embeddings).flatten()
+        similarities = cos_sim(query_embedding, text_embeddings).flatten()
 
-    reranked_results = []
-    for i, score in enumerate(similarities):
-        reranked_result = RerankResponse(index=i, score=float(score), text=texts[i] if not truncate else None)
-        reranked_results.append(reranked_result)
+        reranked_results = [
+            RerankResponse(
+                index=i,
+                score=float(score),
+                text=text if not truncate else None
+            )
+            for i, (score, text) in enumerate(zip(similarities, texts))
+        ]
 
-    reranked_results = sorted(reranked_results, key=lambda x: x.score, reverse=True)
+        reranked_results.sort(key=lambda x: x.score, reverse=True)
 
-    print(reranked_results)  
-    return reranked_results
+        logger.info(f"Reranked {len(reranked_results)} results")
+        return reranked_results
+
+    except Exception as e:
+        logger.error(f"Error in reranking: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000, access_log=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
