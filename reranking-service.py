@@ -6,6 +6,10 @@ from typing import List, Optional
 import uvicorn
 import torch
 from transformers import logging
+from functools import lru_cache
+import hashlib
+from concurrent.futures import ThreadPoolExecutor
+import os
 
 # Set up logging
 logging.set_verbosity_info()
@@ -14,7 +18,7 @@ logger = logging.get_logger("transformers")
 app = FastAPI()
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-### TIME BASED ON CPU
+MODEL_NAME = 'BAAI/bge-reranker-base'
 #rerank_module = SentenceTransformer('mixedbread-ai/mxbai-rerank-xsmall-v1') # 50-70ms
 #rerank_module = SentenceTransformer('jinaai/jina-reranker-v1-turbo-en') # 30-40ms
 #rerank_module = SentenceTransformer('jinaai/jina-reranker-v2-base-multilingual') # 1s+
@@ -23,10 +27,14 @@ DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 #rerank_module = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2') # 15-30ms
 #sdadas/polish-reranker-large-mse
 
-MODEL_NAME = 'BAAI/bge-reranker-base'
-
 # Initialize the model
 rerank_module = SentenceTransformer(MODEL_NAME).to(DEVICE)
+
+# Set the number of worker threads
+MAX_WORKERS = os.cpu_count() or 1
+print("MAX_WORKERS: ", MAX_WORKERS)
+# Create a ThreadPoolExecutor
+executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
 
 class RerankRequest(BaseModel):
     query: str = Field(..., description="The query to rerank against")
@@ -44,6 +52,13 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     return response
 
+@lru_cache(maxsize=1000)
+def get_embedding(text: str):
+    return rerank_module.encode([text])[0]
+
+def hash_texts(texts: List[str]) -> str:
+    return hashlib.md5(''.join(texts).encode()).hexdigest()
+
 @app.post("/rerank", response_model=List[RerankResponse])
 async def get_rerank_embeddings(request: RerankRequest):
     try:
@@ -51,10 +66,12 @@ async def get_rerank_embeddings(request: RerankRequest):
         texts = request.texts
         truncate = request.truncate
 
-        # Perform reranking
-        embeddings = rerank_module.encode([query] + texts)
-        query_embedding = embeddings[0]
-        text_embeddings = embeddings[1:]
+        # Use ThreadPoolExecutor for parallel processing
+        future_query = executor.submit(get_embedding, query)
+        future_texts = executor.submit(rerank_module.encode, texts)
+
+        query_embedding = future_query.result()
+        text_embeddings = future_texts.result()
 
         similarities = cos_sim(query_embedding, text_embeddings).flatten()
 
